@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Type
 
 from openai import AsyncOpenAI
 
-from .llm import BaseAsyncLLM, llm_call, StreamResult
-from .responses import ResponseWrapper
+from .llm import BaseAsyncLLM, ChatResult
+from .responses import LLMResponseWrapper
 from .chat_types import ChatMessage, ChatParams
-from .openai_provider import OpenAIRequestAdapter, _parse_openai_content
+from .openai_provider import OpenAIRequestAdapter
 
 
 class GeminiLLM(BaseAsyncLLM):
@@ -39,12 +39,17 @@ class GeminiLLM(BaseAsyncLLM):
         # Reuse OpenAI's request adapter since Gemini uses OpenAI-compatible API
         self._adapter = OpenAIRequestAdapter()
 
-    @llm_call(lambda **kwargs: ResponseWrapper(_parse_openai_content, **kwargs))
+    @property
+    def wrapper_class(self) -> Type[LLMResponseWrapper]:
+        """Response wrapper class for Gemini provider."""
+        from .provider_wrappers import GeminiWrapper
+        return GeminiWrapper
+
     async def _chat_impl(
         self,
         messages: Sequence[ChatMessage],
         params: ChatParams,
-    ) -> StreamResult:
+    ) -> ChatResult:
         """Core implementation for Gemini chat requests via OpenAI-compatible API."""
         
         # Build request arguments using OpenAI adapter
@@ -58,18 +63,10 @@ class GeminiLLM(BaseAsyncLLM):
 
         if params.stream:
             # Handle streaming
-            stream = await self._client.chat.completions.create(stream=True, **args)
-            
-            async def generate_responses():
-                async for chunk in stream:
-                    yield ResponseWrapper(_parse_openai_content, llm_response=chunk)
-            
-            return generate_responses()
+            return self._generic_stream(
+                lambda: self._client.chat.completions.create(stream=True, **args)
+            )
         else:
             # Non-streaming
-            try:
-                response = await self._client.chat.completions.create(**args)
-                return ResponseWrapper(_parse_openai_content, llm_response=response)
-            except Exception as e:
-                self._log(f"Error in Gemini request: {e}", level=logging.ERROR)
-                return ResponseWrapper(_parse_openai_content, error_message=str(e))
+            response = await self._client.chat.completions.create(**args)
+            return response

@@ -1,42 +1,15 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, AsyncGenerator, Optional, Sequence, Union
+from typing import Any, AsyncGenerator, Optional, Sequence, Type
 
 from anthropic import AsyncAnthropic
 from anthropic.types import Message
 
-from .llm import BaseAsyncLLM, llm_call, StreamResult, ResponseExtractor
-from .responses import ResponseWrapper
+from .llm import BaseAsyncLLM, ChatResult
+from .responses import LLMResponseWrapper
+from .tool_types import ToolCallResult
 from .chat_types import ChatMessage, ChatParams
-
-
-#TODO: Fix streaming - first token is repeated for some reason
-def _parse_anthropic_content(response: Union[Message, Any]) -> str:
-    """Parse content from Anthropic response."""
-    # First check if it's a complete Message with content blocks
-    if hasattr(response, 'content') and response.content:
-        # Complete message - extract text from content blocks
-        text_parts = []
-        for block in response.content:
-            if hasattr(block, 'type') and block.type == "text" and hasattr(block, 'text'):
-                text_parts.append(block.text)
-        return "".join(text_parts)
-    
-    # Then check if it's a streaming event by looking for type attribute
-    elif hasattr(response, 'type'):
-        # Handle streaming events - only process text deltas
-        if response.type == "content_block_delta":
-            # Check if it's a text delta
-            if hasattr(response, 'delta') and hasattr(response.delta, 'type') and response.delta.type == "text_delta":
-                return response.delta.text
-        # Handle direct text events (from older SDK versions)
-        elif response.type == "text" and hasattr(response, 'text'):
-            return response.text
-        # For all other streaming events, return empty
-        return ""
-    
-    return ""
 
 
 class AnthropicRequestAdapter:
@@ -111,12 +84,7 @@ class AnthropicRequestAdapter:
                         "description": func.get("description", ""),
                         "input_schema": func.get("parameters", {})
                     })
-                elif tool.get("type") == "web_search_20250305":
-                    # Web search tool
-                    anthropic_tools.append({
-                        "name": "web_search",
-                        "type": "web_search_20250305"
-                    })
+                # No support for other tool types yet (e.g., server side tools such as web search)
                 else:
                     # Assume it's already in Anthropic format
                     anthropic_tools.append(tool)
@@ -133,10 +101,21 @@ class AnthropicRequestAdapter:
                     base_params[key] = value
                     
         return base_params
-
-
-# Simplified type alias using the generic ResponseWrapper
-AnthropicChatResponseWrapper = ResponseWrapper[Union[Message, Any]]
+    
+    def build_tool_result_message(self, result: ToolCallResult) -> ChatMessage:
+        """
+        Return a ChatMessage that Anthropic expects for a tool_result.
+        """
+        return {
+            "role": "user", #Anthropic mandates 'user' here
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": result.id,
+                    "content": result.content,
+                }
+            ],
+        }
 
 
 class AnthropicLLM(BaseAsyncLLM):
@@ -154,24 +133,39 @@ class AnthropicLLM(BaseAsyncLLM):
         max_retries: int = 3,
         logger: Optional[logging.Logger] = None,
         name: Optional[str] = None,
+        base_url: Optional[str] = None,
     ) -> None:
         super().__init__(model=model, logger=logger, name=name)
         self.api_key = api_key
-        self._client = AsyncAnthropic(api_key=self.api_key, timeout=timeout, max_retries=max_retries)
+        self._client = AsyncAnthropic(api_key=self.api_key, timeout=timeout, max_retries=max_retries, base_url=base_url)
         self._adapter = AnthropicRequestAdapter()
 
-    @llm_call(lambda **kwargs: ResponseWrapper(_parse_anthropic_content, **kwargs))
+    @property
+    def wrapper_class(self) -> Type[LLMResponseWrapper]:
+        """Response wrapper class for Anthropic provider."""
+        from .provider_wrappers import AnthropicWrapper
+        return AnthropicWrapper
+
     async def _chat_impl(
         self,
         messages: Sequence[ChatMessage],
         params: ChatParams,
-    ) -> StreamResult:
+    ) -> ChatResult:
         """Core implementation for Anthropic chat requests."""
         # Build request arguments using the adapter
         # Don't include 'stream' in args - it's handled separately
+        all_messages = self._adapter.build_messages(messages)
+        
+        system_prompt = ""
+        # Anthropic expects the system prompt as a top-level parameter, 
+        # not a message in the messages list
+        if all_messages and all_messages[0].get("role") == "system":
+            system_prompt = all_messages.pop(0).get("content", "")
+
         args = {
             "model": self.model,
-            "messages": self._adapter.build_messages(messages),
+            "system": system_prompt,
+            "messages": all_messages,
             **self._adapter.build_params(params)
         }
         
@@ -183,79 +177,16 @@ class AnthropicLLM(BaseAsyncLLM):
         else:
             # Non-streaming: direct API call
             response: Message = await self._client.messages.create(**args)
-            return ResponseWrapper(_parse_anthropic_content, llm_response=response)
+            return response
 
-    async def _anthropic_stream(self, args: dict[str, Any]) -> AsyncGenerator[ResponseWrapper[Any], None]:
+    async def _anthropic_stream(self, args: dict[str, Any]) -> AsyncGenerator[Any, None]:
         """Handle Anthropic-specific streaming with context manager."""
-        try:
-            async with self._client.messages.stream(**args) as stream:
-                async for event in stream:
-                    yield ResponseWrapper(_parse_anthropic_content, llm_response=event)
-        except Exception as e:
-            self._log(f"Streaming error: {e}", level=logging.ERROR)
-            yield ResponseWrapper(_parse_anthropic_content, error_message=str(e))
+        async with self._client.messages.stream(**args) as stream:
+            async for event in stream:
+                yield event
 
 
-# Unified helper functions using ResponseExtractor
-
-def get_anthropic_tool_uses(wrapper: ResponseWrapper) -> Optional[list]:
-    """Extract tool uses from Anthropic response wrapper."""
-    if wrapper.is_error or not wrapper.raw_response:
-        return None
-    
-    response = wrapper.raw_response
-    if isinstance(response, Message) and response.content:
-        tool_uses = []
-        for block in response.content:
-            if block.type == "tool_use":
-                tool_uses.append({
-                    "id": block.id,
-                    "name": block.name,
-                    "input": block.input
-                })
-        return tool_uses if tool_uses else None
-    return None
-
-
-def get_anthropic_thinking(wrapper: ResponseWrapper) -> Optional[str]:
-    """Extract thinking content from Anthropic response wrapper."""
-    # Check for thinking in content blocks
-    content = ResponseExtractor.extract_by_path(wrapper, "content")
-    if content:
-        for block in content:
-            if getattr(block, 'type', None) == "thinking":
-                return getattr(block, 'thinking', None)
-    
-    # Check for streaming thinking events
-    response = wrapper.raw_response
-    if hasattr(response, 'type') and response.type == "thinking":
-        return getattr(response, 'thinking', None)
-    
-    return None
-
-
-def get_anthropic_stop_reason(wrapper: ResponseWrapper) -> Optional[str]:
-    """Extract stop reason from Anthropic response wrapper."""
-    return ResponseExtractor.extract_by_path(wrapper, "stop_reason")
-
-
-def get_anthropic_usage(wrapper: ResponseWrapper) -> Optional[dict]:
-    """Extract usage statistics from Anthropic response wrapper."""
-    return ResponseExtractor.extract_usage(wrapper, "anthropic")
-
-
-def get_anthropic_web_search_results(wrapper: ResponseWrapper) -> Optional[list[dict]]:
-    """Extract web search results from Anthropic response wrapper."""
-    content = ResponseExtractor.extract_by_path(wrapper, "content")
-    if content:
-        for block in content:
-            if (getattr(block, 'type', None) == "web_search_tool_result" and 
-                hasattr(block, 'content')):
-                return block.content
-    return None
-
-
-def create_anthropic_message_dict(wrapper: ResponseWrapper) -> Optional[dict[str, Any]]:
+def create_anthropic_message_dict(wrapper: LLMResponseWrapper) -> Optional[dict[str, Any]]:
     """Create Anthropic message dictionary from response wrapper."""
     if wrapper.is_error or not wrapper.raw_response:
         return None
@@ -299,4 +230,3 @@ def create_anthropic_message_dict(wrapper: ResponseWrapper) -> Optional[dict[str
             
         return message_dict
     
-    return None

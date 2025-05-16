@@ -1,4 +1,3 @@
-# src/llm_bridge/factory.py
 from __future__ import annotations
 
 import logging
@@ -31,7 +30,7 @@ def create_llm(
 
     Args:
         provider: Which provider to use (OPENAI, ANTHROPIC, GEMINI).
-        model:     Model identifier (e.g. "gpt-4", "claude-3").
+        model:     Model identifier (e.g. "gemini-2.5-flash-preview-04-17").
         api_key:   Overrides automatic lookup; if omitted, pulled from env.
         logger:    Optional custom logger.
         **provider_kwargs: Any extra args to pass through (timeout, max_retries).

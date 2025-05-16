@@ -1,29 +1,16 @@
-
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Sequence, Union
+from typing import Any, AsyncGenerator, Optional, Sequence, Union, Type
 
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
-from .llm import BaseAsyncLLM, llm_call, StreamResult, ResponseExtractor
-from .responses import ResponseWrapper
+from llm_bridge.llm import BaseAsyncLLM
+from llm_bridge.tool_types import ToolCallResult
+
+from .responses import LLMResponseWrapper
 from .chat_types import ChatMessage, ChatParams
-
-
-def _parse_openai_content(response: Union[ChatCompletion, ChatCompletionChunk]) -> str:
-    """Parse content from OpenAI response."""
-    content: Optional[str] = None
-    if isinstance(response, ChatCompletionChunk):
-        # Streaming chunk
-        if response.choices and response.choices[0].delta:
-            content = response.choices[0].delta.content
-    else:
-        # Complete response
-        if response.choices and response.choices[0].message:
-            content = response.choices[0].message.content
-    return content if content is not None else ""
 
 
 class OpenAIRequestAdapter:
@@ -92,10 +79,16 @@ class OpenAIRequestAdapter:
             base_params.update(params.extra_params)
             
         return base_params
-
-
-# Simplified type alias using the generic ResponseWrapper
-OpenAIChatResponseWrapper = ResponseWrapper[Union[ChatCompletion, ChatCompletionChunk]]
+    
+    def build_tool_result_message(self, result: ToolCallResult) -> ChatMessage:
+        """
+        Return a ChatMessage that OpenAI expects for a tool result.
+        """
+        return {
+            "role": "tool",
+            "tool_call_id": result.id,
+            "content": str(result.content) if not isinstance(result.content, str) else result.content,
+        }
 
 
 class OpenAILLM(BaseAsyncLLM):
@@ -112,18 +105,24 @@ class OpenAILLM(BaseAsyncLLM):
         max_retries: int = 3,
         logger: Optional[logging.Logger] = None,
         name: Optional[str] = None,
+        base_url: Optional[str] = None,
     ) -> None:
         super().__init__(model=model, logger=logger, name=name)
         self.api_key = api_key
-        self._client = AsyncOpenAI(api_key=self.api_key, timeout=timeout, max_retries=max_retries)
+        self._client = AsyncOpenAI(api_key=self.api_key, timeout=timeout, max_retries=max_retries, base_url=base_url)
         self._adapter = OpenAIRequestAdapter()
 
-    @llm_call(lambda **kwargs: ResponseWrapper(_parse_openai_content, **kwargs))
+    @property
+    def wrapper_class(self) -> Type[LLMResponseWrapper]:
+        """Response wrapper class for OpenAI provider."""
+        from .provider_wrappers import OpenAIWrapper
+        return OpenAIWrapper
+
     async def _chat_impl(
         self,
         messages: Sequence[ChatMessage],
         params: ChatParams,
-    ) -> StreamResult:
+    ) -> Union[ChatCompletion, AsyncGenerator[ChatCompletionChunk, None]]:
         """Core implementation for OpenAI chat requests."""
         # Build request arguments using the adapter
         args = {
@@ -138,45 +137,20 @@ class OpenAILLM(BaseAsyncLLM):
         if params.stream:
             # Use the generic streaming implementation
             return self._generic_stream(
-                lambda: self._client.chat.completions.create(**args),
-                _parse_openai_content
+                lambda: self._client.chat.completions.create(**args)
             )
         else:
             # Non-streaming: direct API call
             response: ChatCompletion = await self._client.chat.completions.create(**args)
-            return ResponseWrapper(_parse_openai_content, llm_response=response)
+            return response
 
 
-# Unified helper functions using ResponseExtractor
-
-def get_openai_tool_calls(wrapper: ResponseWrapper) -> Optional[list]:
-    """Extract tool calls from OpenAI response wrapper."""
-    return ResponseExtractor.extract_by_path(wrapper, "choices.0.message.tool_calls") or \
-           ResponseExtractor.extract_by_path(wrapper, "choices.0.delta.tool_calls")
-
-
-def get_openai_function_call(wrapper: ResponseWrapper) -> Optional[dict]:
-    """Extract function call from OpenAI response wrapper (legacy format)."""
-    return ResponseExtractor.extract_by_path(wrapper, "choices.0.message.function_call") or \
-           ResponseExtractor.extract_by_path(wrapper, "choices.0.delta.function_call")
-
-
-def get_openai_finish_reason(wrapper: ResponseWrapper) -> Optional[str]:
-    """Extract finish reason from OpenAI response wrapper."""
-    return ResponseExtractor.extract_by_path(wrapper, "choices.0.finish_reason")
-
-
-def get_openai_usage(wrapper: ResponseWrapper) -> Optional[dict]:
-    """Extract usage statistics from OpenAI response wrapper."""
-    return ResponseExtractor.extract_usage(wrapper, "openai")
-
-
-def create_openai_message_dict(wrapper: ResponseWrapper) -> Optional[dict[str, Any]]:
+def create_openai_message_dict(wrapper: LLMResponseWrapper) -> Optional[dict[str, Any]]:
     """Create OpenAI message dictionary from response wrapper."""
     if wrapper.is_error or not wrapper.raw_response:
         return None
     
-    message = ResponseExtractor.extract_by_path(wrapper, "choices.0.message")
+    message = wrapper.extract_by_path("choices.0.message")
     if not message:
         return None
     

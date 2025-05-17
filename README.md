@@ -112,6 +112,6 @@ See examples/structured_output.py for an example solving equations step-by-step.
 
 ❌ Only Chat completions is currently supported
 
-❌ Native Gemini client (google-generativeai) is not yet supported
+❌ Native Gemini client (python-genai) is not yet supported
 
 ❌ Web search and other server-side tools are not yet implemented

@@ -11,7 +11,7 @@
 ```bash
 poetry install
 
-# Set environment variables for your API keys: (at least one is required)
+# Set environment variables for your API keys: (at least one is required; you can also include it in an .env file)
 
 # OpenAI
 export OPENAI_API_KEY=sk-...
@@ -22,6 +22,35 @@ export GEMINI_API_KEY=...
 ```
 
 # Basic Usage
+
+Creating an LLM client is simple:
+
+```
+from llm_bridge.factory import create_llm
+from llm_bridge.providers import Provider
+
+anthropic_llm = create_llm(Provider.ANTHROPIC, "claude-3-5-haiku-20241022")
+```
+
+This initializes the Anthropic LLM client in llm‑bridge via the Anthropic Async client with its default configuration.
+
+## Using your own SDK client
+
+You can also configure the client yourself and pass it directly to the factory:
+
+```
+from anthropic import AsyncAnthropic
+
+anthropic_client = AsyncAnthropic(
+    api_key=os.environ.get("ANTHROPIC_API_KEY"),  # This is the default and can be omitted
+    ...
+)
+anthropic_llm = create_llm(
+    Provider.ANTHROPIC,
+    "claude‑3‑5‑haiku‑20241022",
+    client=anthropic_client,
+)
+```
 
 ## Simple Chat Example
 

@@ -29,7 +29,7 @@ class RequestAdapter(Protocol):
 
 class BaseAsyncLLM(ABC):
     """
-    Base class for all LLM implementations. All implementations are async-first.
+    Abstract base class for async-first LLM wrappers.
     """
 
     def __init__(
@@ -38,22 +38,10 @@ class BaseAsyncLLM(ABC):
         *,
         logger: Optional[logging.Logger] = None,
         name: Optional[str] = None,
-        base_url: Optional[str] = None,
     ) -> None:
-        """
-        Initializes the base LLM client.
-
-        Args:
-            model: The identifier of the LLM model to be used.
-            logger: Optional logger instance. If None, a logger named after
-                    this module will be used.
-            name: Optional name for this component, used in logging.
-                  If None, defaults to the concrete class's name.
-        """
         self.model = model
         self.logger = logger or logging.getLogger(__name__)
-        self.name = name if name is not None else self.__class__.__name__
-        self.base_url = base_url
+        self.name = name or self.__class__.__name__
 
     @abstractmethod
     async def _chat_impl(
@@ -98,7 +86,7 @@ class BaseAsyncLLM(ABC):
         except Exception as exc:
             return self._wrap_error(exc)
 
-        if isinstance(raw, AsyncGenerator):
+        if hasattr(raw, "__anext__"):
             return self._wrap_stream(raw)
         return self._wrap_response(raw)
 

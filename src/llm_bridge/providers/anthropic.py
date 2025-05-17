@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, AsyncGenerator, Optional, Sequence, Type
+from typing import Any, AsyncGenerator, Optional, Self, Sequence, Type
 
 from anthropic import AsyncAnthropic
 from anthropic.types import Message
@@ -122,25 +122,56 @@ class AnthropicRequestAdapter:
 
 class AnthropicLLM(BaseAsyncLLM):
     """
-    Anthropic LLM implementation (async-only).
-    Use SyncLLM wrapper for synchronous access.
+    Anthropic LLM implementation (async‑only).
+
+    Use ``AnthropicLLM.from_client`` when you already have an ``AsyncAnthropic`` instance.
     """
 
     def __init__(
         self,
         model: str,
         *,
-        api_key: Optional[str] = None,
-        timeout: float = 120.0,
-        max_retries: int = 3,
+        api_key: str,
+        timeout: float = 60.0,
+        max_retries: int = 2,
         logger: Optional[logging.Logger] = None,
         name: Optional[str] = None,
         base_url: Optional[str] = None,
     ) -> None:
         super().__init__(model=model, logger=logger, name=name)
         self.api_key = api_key
-        self._client = AsyncAnthropic(api_key=self.api_key, timeout=timeout, max_retries=max_retries, base_url=base_url)
+        self._client = AsyncAnthropic(
+            api_key=api_key,
+            timeout=timeout,
+            max_retries=max_retries,
+            base_url=base_url,
+        )
         self._adapter = AnthropicRequestAdapter()
+
+    # Alternate constructor
+    @classmethod
+    def from_client(
+        cls,
+        model: str,
+        client: AsyncAnthropic,
+        *,
+        logger: Optional[logging.Logger] = None,
+        name: Optional[str] = None,
+    ) -> Self:
+        """
+        Wrap an existing ``AsyncAnthropic`` client.
+        """
+        if not isinstance(client, AsyncAnthropic):
+            raise TypeError(
+                f"AnthropicLLM.from_client expects AsyncAnthropic; got {type(client).__name__}"
+            )
+
+        self = cls.__new__(cls)               # bypass __init__
+        BaseAsyncLLM.__init__(self, model=model, logger=logger, name=name)
+        self.api_key = client.api_key
+        self._client = client
+        self._adapter = AnthropicRequestAdapter()
+        return self
 
     @property
     def wrapper_class(self) -> Type[BaseChatResponse]:

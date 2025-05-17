@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, AsyncGenerator, Optional, Sequence, Union, Type
+from typing import Any, AsyncGenerator, Optional, Self, Sequence, Union, Type
 
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
@@ -92,24 +92,56 @@ class OpenAIRequestAdapter:
 
 class OpenAILLM(BaseAsyncLLM):
     """
-    OpenAI LLM implementation (async-only).
+    OpenAI LLM implementation (async‑only).
+
+    Use ``OpenAILLM.from_client`` when you already have an ``AsyncOpenAI`` instance.
     """
 
     def __init__(
         self,
         model: str,
         *,
-        api_key: Optional[str] = None,
-        timeout: float = 120.0,
-        max_retries: int = 3,
+        api_key: str,
+        timeout: float = 60.0,
+        max_retries: int = 2,
         logger: Optional[logging.Logger] = None,
         name: Optional[str] = None,
         base_url: Optional[str] = None,
     ) -> None:
         super().__init__(model=model, logger=logger, name=name)
         self.api_key = api_key
-        self._client = AsyncOpenAI(api_key=self.api_key, timeout=timeout, max_retries=max_retries, base_url=base_url)
+        self._client = AsyncOpenAI(
+            api_key=api_key,
+            timeout=timeout,
+            max_retries=max_retries,
+            base_url=base_url,
+        )
         self._adapter = OpenAIRequestAdapter()
+
+    # Alternate constructor
+    @classmethod
+    def from_client(
+        cls,
+        model: str,
+        client: AsyncOpenAI,
+        *,
+        logger: Optional[logging.Logger] = None,
+        name: Optional[str] = None,
+    ) -> Self:
+        """
+        Build an ``OpenAILLM`` around an already‑configured ``AsyncOpenAI`` client.
+        """
+        if not isinstance(client, AsyncOpenAI):
+            raise TypeError(
+                f"OpenAILLM.from_client expects AsyncOpenAI; got {type(client).__name__}"
+            )
+
+        self = cls.__new__(cls)  # bypass __init__
+        BaseAsyncLLM.__init__(self, model=model, logger=logger, name=name)
+        self.api_key = client.api_key
+        self._client = client
+        self._adapter = OpenAIRequestAdapter()
+        return self
 
     @property
     def wrapper_class(self) -> Type[BaseChatResponse]:

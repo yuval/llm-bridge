@@ -23,20 +23,42 @@ export GEMINI_API_KEY=...
 
 # Basic Usage
 
+## Simple Chat Example
+
 ```
 import asyncio
-from llm_bridge import Provider, create_llm, ChatParams
+from llm_bridge import ChatParams
+from llm_bridge.factory import create_llm
+from llm_bridge.providers import Provider
+from llm_bridge.responses import BaseChatResponse
 
-async def main():
-    llm = create_llm(Provider.OPENAI, "gpt-4")
-    messages = [{"role": "user", "content": "Hello, who are you?"}]
-    response = await llm.chat(messages)
-    print(response.get_response_content())
 
-asyncio.run(main())
+async def chat_example():
+    openai_llm = create_llm(Provider.OPENAI, "gpt-4.1-nano-2025-04-14")
+    anthropic_llm = create_llm(Provider.ANTHROPIC, "claude-3-5-haiku-20241022")
+    gemini_llm = create_llm(Provider.GEMINI, "gemini-2.0-flash-lite")
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "What's your name?"},
+    ]
+
+    params = ChatParams(max_tokens=1000, temperature=0.7)
+
+    openai_response: BaseChatResponse = await openai_llm.chat(messages, params=params)
+    anthropic_response: BaseChatResponse = await anthropic_llm.chat(messages, params=params)
+    gemini_response: BaseChatResponse = await gemini_llm.chat(messages, params=params)
+
+    print("OpenAI: ", openai_response.get_response_content())
+    print("Anthropic: ", anthropic_response.get_response_content())
+    print("Gemini: ", gemini_response.get_response_content())
+
+
+if __name__ == "__main__":
+    asyncio.run(chat_example())
 ```
 
-# Streaming Example
+## Streaming Example
 
 ```
 params = ChatParams(stream=True)
@@ -45,7 +67,7 @@ async for chunk in stream:
     print(chunk.get_response_content(), end="", flush=True)
 ```
 
-# Tool Calling
+## Tool Calling
 
 ```
 tools = [{
@@ -70,7 +92,7 @@ params = ChatParams(tools=tools)
 
 See examples/basic_tool.py for a full working demo.
 
-# Structured Output (JSON Schema)
+## Structured Output (JSON Schema)
 
 ```
 params = ChatParams(response_format={
@@ -93,8 +115,3 @@ See examples/structured_output.py for an example solving equations step-by-step.
 ❌ Native Gemini client (google-generativeai) is not yet supported
 
 ❌ Web search and other server-side tools are not yet implemented
-
-
-# License
-
-MIT © 2025 Yuval Merhav

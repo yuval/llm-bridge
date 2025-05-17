@@ -5,15 +5,15 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Callable, Optional, Protocol, Sequence, Type, TypeVar, Union
 
-from .chat_types import ChatMessage, ChatParams
-from .responses import LLMResponseWrapper
-from .errors import classify_error
+from llm_bridge._exceptions import classify_error
+from llm_bridge.types.chat import BaseChatResponse, ChatMessage, ChatParams
+
 
 __all__ = ["BaseAsyncLLM", "RequestAdapter"]
 
-T = TypeVar('T', bound=LLMResponseWrapper)
+T = TypeVar('T', bound=BaseChatResponse)
 # Type for streaming responses
-ChatResult = Union[LLMResponseWrapper, AsyncGenerator[LLMResponseWrapper, None]]
+ChatResult = Union[BaseChatResponse, AsyncGenerator[BaseChatResponse, None]]
 
 
 class RequestAdapter(Protocol):
@@ -77,7 +77,7 @@ class BaseAsyncLLM(ABC):
 
     @property
     @abstractmethod
-    def wrapper_class(self) -> Type[LLMResponseWrapper]:
+    def wrapper_class(self) -> Type[BaseChatResponse]:
         """LLMResponseWrapper subclass for this provider."""
         ...
 
@@ -86,7 +86,7 @@ class BaseAsyncLLM(ABC):
         messages: Sequence[ChatMessage],
         *,
         params: ChatParams | None = None,
-    ) -> Union[LLMResponseWrapper, AsyncGenerator[LLMResponseWrapper, None]]:
+    ) -> Union[BaseChatResponse, AsyncGenerator[BaseChatResponse, None]]:
         """
         Send chat, catching exceptions and wrapping responses uniformly.
 
@@ -102,20 +102,20 @@ class BaseAsyncLLM(ABC):
             return self._wrap_stream(raw)
         return self._wrap_response(raw)
 
-    def _wrap_error(self, exc: Exception) -> LLMResponseWrapper:
+    def _wrap_error(self, exc: Exception) -> BaseChatResponse:
         """Wrap exception into an error response wrapper."""
         msg = classify_error(exc, self.logger)
         return self.wrapper_class(error_message=msg)
 
-    def _wrap_response(self, raw: Any) -> LLMResponseWrapper:
+    def _wrap_response(self, raw: Any) -> BaseChatResponse:
         """Wrap raw provider response into a response wrapper."""
         return self.wrapper_class(raw_response=raw)
 
     def _wrap_stream(
         self, raw_stream: AsyncGenerator[Any, None]
-    ) -> AsyncGenerator[LLMResponseWrapper, None]:
+    ) -> AsyncGenerator[BaseChatResponse, None]:
         """Wrap an async stream of raw responses into wrapped responses."""
-        async def gen() -> AsyncGenerator[LLMResponseWrapper, None]:
+        async def gen() -> AsyncGenerator[BaseChatResponse, None]:
             try:
                 async for item in raw_stream:
                     yield self.wrapper_class(raw_response=item)
@@ -125,26 +125,11 @@ class BaseAsyncLLM(ABC):
         return gen()
     
     async def _generic_stream(
-        self,
-        make_stream: Callable[..., Any],
+        self, make_stream: Callable[[], AsyncGenerator[Any, None]]
     ) -> AsyncGenerator[Any, None]:
-        """
-        Generic streaming implementation that can be used by all providers.
-        Returns raw responses that will be wrapped by the base class.
-        
-        Args:
-            make_stream: Async callable that creates and returns the stream
-            
-        Yields:
-            Raw response objects from the provider
-        """
-        try:
-            stream = await make_stream()
-            async for chunk in stream:
-                yield chunk
-        except Exception as e:
-            # Let the error propagate up to be caught by chat()
-            raise
+        async for chunk in await make_stream():
+            yield chunk
+
 
     def _log(self, message: str, level: int = logging.INFO) -> None:
         self.logger.log(level, f"[{self.name}] {message}")

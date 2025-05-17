@@ -2,7 +2,7 @@ import asyncio
 from llm_bridge import ChatParams
 from llm_bridge.factory import create_llm
 from llm_bridge.providers import Provider
-from llm_bridge.responses import LLMResponseWrapper
+from llm_bridge.responses import BaseChatResponse
 
 
 async def chat_example():
@@ -17,9 +17,9 @@ async def chat_example():
 
     params = ChatParams(max_tokens=1000, temperature=0.7)
 
-    openai_response: LLMResponseWrapper = await openai_llm.chat(messages, params=params)
-    anthropic_response: LLMResponseWrapper = await anthropic_llm.chat(messages, params=params)
-    gemini_response: LLMResponseWrapper = await gemini_llm.chat(messages, params=params)
+    openai_response: BaseChatResponse = await openai_llm.chat(messages, params=params)
+    anthropic_response: BaseChatResponse = await anthropic_llm.chat(messages, params=params)
+    gemini_response: BaseChatResponse = await gemini_llm.chat(messages, params=params)
 
     print("OpenAI: ", openai_response.get_response_content())
     print("Anthropic: ", anthropic_response.get_response_content())

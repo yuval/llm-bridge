@@ -5,10 +5,11 @@ from typing import Optional, Sequence, Type
 
 from openai import AsyncOpenAI
 
-from .llm import BaseAsyncLLM, ChatResult
-from .responses import LLMResponseWrapper
-from .chat_types import ChatMessage, ChatParams
-from .openai_provider import OpenAIRequestAdapter
+from llm_bridge.responses import GeminiResponse
+from llm_bridge.types.chat import BaseChatResponse, ChatMessage, ChatParams
+
+from .base import BaseAsyncLLM, ChatResult
+from .openai import OpenAIRequestAdapter
 
 
 class GeminiLLM(BaseAsyncLLM):
@@ -40,10 +41,9 @@ class GeminiLLM(BaseAsyncLLM):
         self._adapter = OpenAIRequestAdapter()
 
     @property
-    def wrapper_class(self) -> Type[LLMResponseWrapper]:
+    def wrapper_class(self) -> Type[BaseChatResponse]:
         """Response wrapper class for Gemini provider."""
-        from .provider_wrappers import GeminiWrapper
-        return GeminiWrapper
+        return GeminiResponse
 
     async def _chat_impl(
         self,

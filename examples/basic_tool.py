@@ -4,17 +4,12 @@ import argparse
 import asyncio
 import logging
 
-from llm_bridge.anthropic_provider import (
-    AnthropicRequestAdapter,
-)
-from llm_bridge.openai_provider import (
-    create_openai_message_dict,
-    OpenAIRequestAdapter
-)
-from llm_bridge.chat_types import ChatParams, ChatMessage
 from llm_bridge.factory import create_llm
 from llm_bridge.providers import Provider
-from llm_bridge.tool_types import ToolCallRequest, ToolCallResult
+from llm_bridge.providers.anthropic import AnthropicRequestAdapter
+from llm_bridge.providers.openai import OpenAIRequestAdapter, create_openai_message_dict
+from llm_bridge.types.chat import ChatMessage, ChatParams
+from llm_bridge.types.tool import ToolCallRequest, ToolCallResult
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

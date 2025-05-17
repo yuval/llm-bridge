@@ -6,11 +6,10 @@ from typing import Any, AsyncGenerator, Optional, Sequence, Union, Type
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
-from llm_bridge.llm import BaseAsyncLLM
-from llm_bridge.tool_types import ToolCallResult
-
-from .responses import LLMResponseWrapper
-from .chat_types import ChatMessage, ChatParams
+from llm_bridge.providers.base import BaseAsyncLLM
+from llm_bridge.responses import OpenAIResponse
+from llm_bridge.types.tool import ToolCallResult
+from llm_bridge.types.chat import BaseChatResponse, ChatMessage, ChatParams
 
 
 class OpenAIRequestAdapter:
@@ -113,10 +112,9 @@ class OpenAILLM(BaseAsyncLLM):
         self._adapter = OpenAIRequestAdapter()
 
     @property
-    def wrapper_class(self) -> Type[LLMResponseWrapper]:
+    def wrapper_class(self) -> Type[BaseChatResponse]:
         """Response wrapper class for OpenAI provider."""
-        from .provider_wrappers import OpenAIWrapper
-        return OpenAIWrapper
+        return OpenAIResponse
 
     async def _chat_impl(
         self,
@@ -145,7 +143,7 @@ class OpenAILLM(BaseAsyncLLM):
             return response
 
 
-def create_openai_message_dict(wrapper: LLMResponseWrapper) -> Optional[dict[str, Any]]:
+def create_openai_message_dict(wrapper: BaseChatResponse) -> Optional[dict[str, Any]]:
     """Create OpenAI message dictionary from response wrapper."""
     if wrapper.is_error or not wrapper.raw_response:
         return None

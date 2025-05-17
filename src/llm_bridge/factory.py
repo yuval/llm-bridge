@@ -3,10 +3,11 @@ from __future__ import annotations
 import logging
 from typing import Optional, Type
 
-from .anthropic_provider import AnthropicLLM
-from .gemini_provider import GeminiLLM
-from .openai_provider import OpenAILLM
-from .llm import BaseAsyncLLM
+from llm_bridge.providers.anthropic import AnthropicLLM
+from llm_bridge.providers.gemini import GeminiLLM
+from llm_bridge.providers.base import BaseAsyncLLM
+from llm_bridge.providers.openai import OpenAILLM
+
 from .providers import Provider, get_api_key
 
 # map Provider enum to its LLM implementation

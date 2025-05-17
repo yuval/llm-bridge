@@ -6,10 +6,12 @@ from typing import Any, AsyncGenerator, Optional, Sequence, Type
 from anthropic import AsyncAnthropic
 from anthropic.types import Message
 
-from .llm import BaseAsyncLLM, ChatResult
-from .responses import LLMResponseWrapper
-from .tool_types import ToolCallResult
-from .chat_types import ChatMessage, ChatParams
+from llm_bridge.responses import AnthropicResponse
+from llm_bridge.types.tool import ToolCallResult
+from llm_bridge.types.chat import BaseChatResponse, ChatMessage, ChatParams
+
+from .base import BaseAsyncLLM, ChatResult
+
 
 
 class AnthropicRequestAdapter:
@@ -141,10 +143,9 @@ class AnthropicLLM(BaseAsyncLLM):
         self._adapter = AnthropicRequestAdapter()
 
     @property
-    def wrapper_class(self) -> Type[LLMResponseWrapper]:
+    def wrapper_class(self) -> Type[BaseChatResponse]:
         """Response wrapper class for Anthropic provider."""
-        from .provider_wrappers import AnthropicWrapper
-        return AnthropicWrapper
+        return AnthropicResponse
 
     async def _chat_impl(
         self,
@@ -186,7 +187,7 @@ class AnthropicLLM(BaseAsyncLLM):
                 yield event
 
 
-def create_anthropic_message_dict(wrapper: LLMResponseWrapper) -> Optional[dict[str, Any]]:
+def create_anthropic_message_dict(wrapper: BaseChatResponse) -> Optional[dict[str, Any]]:
     """Create Anthropic message dictionary from response wrapper."""
     if wrapper.is_error or not wrapper.raw_response:
         return None

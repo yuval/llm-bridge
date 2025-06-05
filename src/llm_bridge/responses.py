@@ -173,6 +173,52 @@ class AnthropicResponse(BaseChatResponse):
         
         return ""
 
+    @property
+    def cache_creation_input_tokens(self) -> Optional[int]:
+        """
+        Number of tokens written to the cache when creating a new entry.
+
+        This field indicates how many tokens were cached during this request.
+        Returns None if the response doesn't contain usage information or if
+        prompt caching was not used.
+
+        Returns:
+            Number of cache creation tokens, or None if not available
+        """
+        if self.is_error or not self._response:
+            return None
+
+        # Check if response has usage attribute with cache_creation_input_tokens
+        if hasattr(self._response, 'usage') and self._response.usage:
+            usage = self._response.usage
+            if hasattr(usage, 'cache_creation_input_tokens'):
+                return usage.cache_creation_input_tokens
+
+        return None
+
+    @property
+    def cache_read_input_tokens(self) -> Optional[int]:
+        """
+        Number of tokens retrieved from the cache for this request.
+
+        This field indicates how many tokens were read from an existing cache
+        entry during this request. Returns None if the response doesn't contain
+        usage information or if prompt caching was not used.
+
+        Returns:
+            Number of cache read tokens, or None if not available
+        """
+        if self.is_error or not self._response:
+            return None
+
+        # Check if response has usage attribute with cache_read_input_tokens
+        if hasattr(self._response, 'usage') and self._response.usage:
+            usage = self._response.usage
+            if hasattr(usage, 'cache_read_input_tokens'):
+                return usage.cache_read_input_tokens
+
+        return None
+
     def raise_for_error(self) -> None:
         if self.is_error:
             raise RuntimeError(self._error_message)

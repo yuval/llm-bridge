@@ -137,6 +137,30 @@ response = await llm.chat(messages, params=params)
 
 See examples/structured_output.py for an example solving equations step-by-step.
 
+## Anthropic Prompt Caching
+
+Anthropic supports prompt caching to reduce latency and costs for repeated content. Use the `ephemeral()` helper function to mark content for caching:
+
+```python
+from llm_bridge.providers.anthropic import ephemeral
+
+messages = [
+    {
+        "role": "system",
+        "content": [ephemeral("Your large system prompt here...")]
+    },
+    {"role": "user", "content": "Your question"}
+]
+
+response = await anthropic_llm.chat(messages, params=params)
+
+# Check caching stats
+print(f"Cache creation tokens: {response.cache_creation_input_tokens}")
+print(f"Cache read tokens: {response.cache_read_input_tokens}")
+```
+
+See examples/anthropic_prompt_caching.py for a comprehensive demonstration of prompt caching with statistics monitoring.
+
 # Limitations
 
 ❌ Only Chat completions is currently supported

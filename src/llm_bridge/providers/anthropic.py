@@ -13,6 +13,14 @@ from llm_bridge.types.chat import BaseChatResponse, ChatMessage, ChatParams
 from .base import BaseAsyncLLM, ChatResult
 
 
+def ephemeral(text: str) -> dict[str, Any]:
+    """Return a text block marked for Anthropic’s 5‑minute *ephemeral* prompt cache."""
+    return {
+        "type": "text",
+        "text": text,
+        "cache_control": {"type": "ephemeral"},
+    }
+
 
 class AnthropicRequestAdapter:
     """Adapter for converting generic requests to Anthropic format."""

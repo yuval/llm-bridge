@@ -62,12 +62,15 @@ class OpenAIResponse(BaseChatResponse):
 
                     if isinstance(raw_args, dict):
                         arguments = raw_args
-                    elif isinstance(raw_args, str) and raw_args.strip(): # Ensure string is not empty
+                    elif isinstance(raw_args, str) and raw_args.strip():  # Ensure string is not empty
                         try:
                             arguments = json.loads(raw_args)
                         except json.JSONDecodeError as exc:
-                            self._logger.warning(f"Bad JSON in tool call: {raw_args}", exc_info=exc)
-                            return None
+                            self._logger.warning(
+                                f"Bad JSON in tool call: {raw_args}", exc_info=exc
+                            )
+                            # Keep processing other tool calls instead of aborting
+                            arguments = {}
                     
                     calls.append(
                         ToolCallRequest(

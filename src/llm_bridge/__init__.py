@@ -3,7 +3,7 @@ LLM Bridge - Unified interface for multiple LLM providers.
 """
 
 from .providers.base import BaseAsyncLLM
-from .providers.anthropic import AnthropicLLM
+from .providers.anthropic import AnthropicLLM, ephemeral
 from .providers.openai import OpenAILLM
 from .providers.gemini import GeminiLLM
 from .responses import OpenAIResponse, AnthropicResponse, GeminiResponse
@@ -19,6 +19,7 @@ __all__ = [
     "AnthropicLLM",
     "OpenAILLM",
     "GeminiLLM",
+    "ephemeral",
     "OpenAIResponse",
     "AnthropicResponse",
     "GeminiResponse",

@@ -93,7 +93,7 @@ async def solve_math_with_json_output(equation: str):
         math_response = MathResponse(**parsed_response)
         
         print(f"\nSolution for: {equation}")
-        print(f"Steps:")
+        print("Steps:")
         for i, step in enumerate(math_response.steps, 1):
             print(f"  {i}. {step.explanation}")
             print(f"     Result: {step.output}")

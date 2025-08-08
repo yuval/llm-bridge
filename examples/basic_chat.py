@@ -18,9 +18,12 @@ async def chat_example_default_client():
         {"role": "user", "content": "What's your name?"},
     ]
 
-    params = ChatParams(max_tokens=1000, temperature=0.7)
+    params = ChatParams(max_tokens=1000, temperature=1.0)
 
     openai_response: BaseChatResponse = await openai_llm.chat(messages, params=params)
+    print(f"Is error: {openai_response.is_error}")
+    if openai_response.is_error:
+        print(f"Error: {openai_response.error_message}")
     anthropic_response: BaseChatResponse = await anthropic_llm.chat(
         messages, params=params
     )
@@ -54,7 +57,7 @@ async def chat_example_pass_client():
         {"role": "user", "content": "What's your name?"},
     ]
 
-    params = ChatParams(max_tokens=1000, temperature=0.7)
+    params = ChatParams(max_tokens=1000, temperature=1.0)
 
     openai_response: BaseChatResponse = await openai_llm.chat(messages, params=params)
     anthropic_response: BaseChatResponse = await anthropic_llm.chat(

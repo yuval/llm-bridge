@@ -44,7 +44,36 @@ def test_requires_max_completion_tokens():
     print("✅ Newer model detection tests passed")
 
 
+def test_reasoning_and_verbosity_top_level_and_responses_style():
+    adapter = OpenAIRequestAdapter()
+    # Top-level fields win
+    params = ChatParams(reasoning_effort="minimal", verbosity="low")
+    out = adapter.build_params(params, "gpt-5")
+    assert out["reasoning_effort"] == "minimal"
+    assert out["verbosity"] == "low"
+
+    # Responses-style fallback
+    params = ChatParams(extra_params={"reasoning": {"effort": "high"}, "text": {"verbosity": "high"}})
+    out = adapter.build_params(params, "gpt-5")
+    assert out["reasoning_effort"] == "high"
+    assert out["verbosity"] == "high"
+
+
+def test_extra_params_not_leaked():
+    adapter = OpenAIRequestAdapter()
+    params = ChatParams(extra_params={"foo": "bar"})
+    out = adapter.build_params(params, "gpt-4o-mini")
+    assert "extra_params" not in out
+    assert out["foo"] == "bar"
+
 if __name__ == "__main__":
-    test_max_tokens_parameter_conversion()
-    test_requires_max_completion_tokens()
-    print("🎉 All tests passed!")
+    import sys
+    test_names = [n for n, f in list(globals().items()) if n.startswith("test_") and callable(f)]
+    for name in sorted(test_names):
+        print(f"Running {name}...")
+        try:
+            globals()[name]()
+        except AssertionError as e:
+            print(f"{name} FAILED: {e}")
+            sys.exit(1)
+    print("All tests passed.")

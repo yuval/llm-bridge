@@ -31,6 +31,9 @@ class ChatParams:
     stop: Optional[Union[str, list[str]]] = None
     user: Optional[str] = None
     parallel_tool_calls: Optional[bool] = None
+    # Reasoning models (GPT-5, o-series)
+    reasoning_effort: Optional[str] = None 
+    verbosity: Optional[str] = None
 
     # Provider-specific parameters
     extra_params: Optional[dict[str, Any]] = None

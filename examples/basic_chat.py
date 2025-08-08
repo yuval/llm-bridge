@@ -9,7 +9,7 @@ from llm_bridge.responses import BaseChatResponse
 
 
 async def chat_example_default_client():
-    openai_llm = create_llm(Provider.OPENAI, "gpt-4.1-nano-2025-04-14")
+    openai_llm = create_llm(Provider.OPENAI, "gpt-5-nano-2025-08-07")
     anthropic_llm = create_llm(Provider.ANTHROPIC, "claude-3-5-haiku-20241022")
     gemini_llm = create_llm(Provider.GEMINI, "gemini-2.0-flash-lite")
 
@@ -18,9 +18,12 @@ async def chat_example_default_client():
         {"role": "user", "content": "What's your name?"},
     ]
 
-    params = ChatParams(max_tokens=1000, temperature=0.7)
+    params = ChatParams(max_tokens=1000, temperature=1.0)
 
     openai_response: BaseChatResponse = await openai_llm.chat(messages, params=params)
+    print(f"Is error: {openai_response.is_error}")
+    if openai_response.is_error:
+        print(f"Error: {openai_response.error_message}")
     anthropic_response: BaseChatResponse = await anthropic_llm.chat(
         messages, params=params
     )
@@ -40,7 +43,7 @@ async def chat_example_pass_client():
     )
 
     openai_llm = create_llm(
-        Provider.OPENAI, "gpt-4.1-nano-2025-04-14", client=openai_client
+        Provider.OPENAI, "gpt-5-nano-2025-08-07", client=openai_client
     )
     anthropic_llm = create_llm(
         Provider.ANTHROPIC, "claude-3-5-haiku-20241022", client=anthropic_client
@@ -54,7 +57,7 @@ async def chat_example_pass_client():
         {"role": "user", "content": "What's your name?"},
     ]
 
-    params = ChatParams(max_tokens=1000, temperature=0.7)
+    params = ChatParams(max_tokens=1000, temperature=1.0)
 
     openai_response: BaseChatResponse = await openai_llm.chat(messages, params=params)
     anthropic_response: BaseChatResponse = await anthropic_llm.chat(

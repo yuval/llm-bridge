@@ -83,18 +83,30 @@ class OpenAIRequestAdapter:
                 if value is not None:
                     base_params[attr] = value
 
+        # Remove fields not accepted by API
+        base_params.pop("stream", None)
+        base_params.pop("extra_params", None)
+
+        # Fold Responses-style extras into Chat Completions for convenience
+        extras = getattr(params, "extra_params", None) or {}
+        reasoning = extras.get("reasoning")
+        if isinstance(reasoning, dict) and "effort" in reasoning and "reasoning_effort" not in base_params:
+            base_params["reasoning_effort"] = reasoning["effort"]
+        text_cfg = extras.get("text")
+        if isinstance(text_cfg, dict) and "verbosity" in text_cfg and "verbosity" not in base_params:
+            base_params["verbosity"] = text_cfg["verbosity"]
+
         # Handle max_tokens vs max_completion_tokens based on model
         if "max_tokens" in base_params and base_params["max_tokens"] is not None:
             # Models that require max_completion_tokens instead of max_tokens
             if self._requires_max_completion_tokens(model):
                 base_params["max_completion_tokens"] = base_params.pop("max_tokens")
 
-        # Remove stream from params dict as it's handled separately
-        base_params.pop("stream", None)
-
-        # Add any extra_params
-        if hasattr(params, "extra_params") and params.extra_params:
-            base_params.update(params.extra_params)
+        # Add remaining extra_params (after we consumed reasoning/text)
+        if extras:
+            for k, v in extras.items():
+                if k not in ("reasoning", "text"):  # already mapped
+                    base_params.setdefault(k, v)
 
         return base_params
 

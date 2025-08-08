@@ -1,9 +1,20 @@
 """Base classes for LLM implementations and sync wrapper."""
+
 from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Callable, Optional, Protocol, Sequence, Type, TypeVar, Union
+from typing import (
+    Any,
+    AsyncGenerator,
+    Callable,
+    Optional,
+    Protocol,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from llm_bridge._exceptions import classify_error
 from llm_bridge.types.chat import BaseChatResponse, ChatMessage, ChatParams
@@ -11,21 +22,22 @@ from llm_bridge.types.chat import BaseChatResponse, ChatMessage, ChatParams
 
 __all__ = ["BaseAsyncLLM", "RequestAdapter"]
 
-T = TypeVar('T', bound=BaseChatResponse)
+T = TypeVar("T", bound=BaseChatResponse)
 # Type for streaming responses
 ChatResult = Union[BaseChatResponse, AsyncGenerator[BaseChatResponse, None]]
 
 
 class RequestAdapter(Protocol):
     """Protocol for adapting generic chat messages and params to provider-specific format."""
-    
+
     def build_messages(self, messages: Sequence[ChatMessage]) -> list[dict[str, Any]]:
         """Convert generic ChatMessage list to provider-specific format."""
         ...
-    
+
     def build_params(self, params: ChatParams) -> dict[str, Any]:
         """Convert generic ChatParams to provider-specific parameters."""
-        ...  
+        ...
+
 
 class BaseAsyncLLM(ABC):
     """
@@ -103,6 +115,7 @@ class BaseAsyncLLM(ABC):
         self, raw_stream: AsyncGenerator[Any, None]
     ) -> AsyncGenerator[BaseChatResponse, None]:
         """Wrap an async stream of raw responses into wrapped responses."""
+
         async def gen() -> AsyncGenerator[BaseChatResponse, None]:
             try:
                 async for item in raw_stream:
@@ -111,13 +124,12 @@ class BaseAsyncLLM(ABC):
                 yield self._wrap_error(exc)
 
         return gen()
-    
+
     async def _generic_stream(
         self, make_stream: Callable[[], AsyncGenerator[Any, None]]
     ) -> AsyncGenerator[Any, None]:
         async for chunk in await make_stream():
             yield chunk
-
 
     def _log(self, message: str, level: int = logging.INFO) -> None:
         self.logger.log(level, f"[{self.name}] {message}")

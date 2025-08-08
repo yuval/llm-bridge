@@ -61,6 +61,7 @@ OPENAI_WEATHER_TOOL: dict[str, object] = {
     },
 }
 
+
 def run_local_tool(req: ToolCallRequest) -> str:
     """Stub implementation of get_weather."""
     # imagine we call a real weather API here
@@ -70,7 +71,7 @@ def run_local_tool(req: ToolCallRequest) -> str:
 async def single_tool_roundtrip(provider: Provider, model: str) -> None:
     """
     Run a single tool‐calling roundtrip with the given provider + model.
-    
+
     1) Send user prompt
     2) Let model emit a tool call
     3) Execute stub tool, re‐inject call + result
@@ -149,7 +150,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--model",
-        default="claude-3-5-haiku-20241022" # "gpt-4.1-nano-2025-04-14", "gemini-2.0-flash-lite", "claude-3-5-haiku-20241022"
+        default="claude-3-5-haiku-20241022",  # "gpt-4.1-nano-2025-04-14", "gemini-2.0-flash-lite", "claude-3-5-haiku-20241022"
     )
     args = parser.parse_args()
 

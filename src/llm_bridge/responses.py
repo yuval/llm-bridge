@@ -13,10 +13,13 @@ from anthropic.types import Message
 
 _logger: Logger = logging.getLogger(__name__)
 _logger.addHandler(logging.NullHandler())
+
+
 class OpenAIResponse(BaseChatResponse):
     """OpenAI-specific response wrapper with built-in content extraction."""
+
     _logger: Logger = _logger
-    
+
     def __init__(
         self,
         raw_response: ChatCompletion | ChatCompletionChunk | None = None,
@@ -58,22 +61,24 @@ class OpenAIResponse(BaseChatResponse):
             if message.tool_calls:
                 for tc in message.tool_calls:
                     raw_args = tc.function.arguments
-                    arguments = {} # Default to empty dict
+                    arguments = {}  # Default to empty dict
 
                     if isinstance(raw_args, dict):
                         arguments = raw_args
-                    elif isinstance(raw_args, str) and raw_args.strip(): # Ensure string is not empty
+                    elif (
+                        isinstance(raw_args, str) and raw_args.strip()
+                    ):  # Ensure string is not empty
                         try:
                             arguments = json.loads(raw_args)
                         except json.JSONDecodeError as exc:
-                            self._logger.warning(f"Bad JSON in tool call: {raw_args}", exc_info=exc)
+                            self._logger.warning(
+                                f"Bad JSON in tool call: {raw_args}", exc_info=exc
+                            )
                             return None
-                    
+
                     calls.append(
                         ToolCallRequest(
-                            id=tc.id,
-                            name=tc.function.name,
-                            arguments=arguments
+                            id=tc.id, name=tc.function.name, arguments=arguments
                         )
                     )
         return calls or None
@@ -98,7 +103,7 @@ class OpenAIResponse(BaseChatResponse):
 
 class AnthropicResponse(BaseChatResponse):
     """Anthropic-specific response wrapper with built-in content extraction."""
-    
+
     def __init__(
         self,
         raw_response: Union[Message, Any] | None = None,
@@ -150,27 +155,35 @@ class AnthropicResponse(BaseChatResponse):
     def _extract_content(self, response: Union[Message, Any]) -> str:
         """Extract content from Anthropic response."""
         # First check if it's a complete Message with content blocks
-        if hasattr(response, 'content') and response.content:
+        if hasattr(response, "content") and response.content:
             # Complete message - extract text from content blocks
             text_parts = []
             for block in response.content:
-                if hasattr(block, 'type') and block.type == "text" and hasattr(block, 'text'):
+                if (
+                    hasattr(block, "type")
+                    and block.type == "text"
+                    and hasattr(block, "text")
+                ):
                     text_parts.append(block.text)
             return "".join(text_parts)
-        
+
         # Then check if it's a streaming event by looking for type attribute
-        elif hasattr(response, 'type'):
+        elif hasattr(response, "type"):
             # Handle streaming events - only process text deltas
             if response.type == "content_block_delta":
                 # Check if it's a text delta
-                if hasattr(response, 'delta') and hasattr(response.delta, 'type') and response.delta.type == "text_delta":
+                if (
+                    hasattr(response, "delta")
+                    and hasattr(response.delta, "type")
+                    and response.delta.type == "text_delta"
+                ):
                     return response.delta.text
             # Handle direct text events (from older SDK versions)
-            elif response.type == "text" and hasattr(response, 'text'):
+            elif response.type == "text" and hasattr(response, "text"):
                 return response.text
             # For all other streaming events, return empty
             return ""
-        
+
         return ""
 
     @property
@@ -189,9 +202,9 @@ class AnthropicResponse(BaseChatResponse):
             return None
 
         # Check if response has usage attribute with cache_creation_input_tokens
-        if hasattr(self._response, 'usage') and self._response.usage:
+        if hasattr(self._response, "usage") and self._response.usage:
             usage = self._response.usage
-            if hasattr(usage, 'cache_creation_input_tokens'):
+            if hasattr(usage, "cache_creation_input_tokens"):
                 return usage.cache_creation_input_tokens
 
         return None
@@ -212,9 +225,9 @@ class AnthropicResponse(BaseChatResponse):
             return None
 
         # Check if response has usage attribute with cache_read_input_tokens
-        if hasattr(self._response, 'usage') and self._response.usage:
+        if hasattr(self._response, "usage") and self._response.usage:
             usage = self._response.usage
-            if hasattr(usage, 'cache_read_input_tokens'):
+            if hasattr(usage, "cache_read_input_tokens"):
                 return usage.cache_read_input_tokens
 
         return None
@@ -226,4 +239,5 @@ class AnthropicResponse(BaseChatResponse):
 
 class GeminiResponse(OpenAIResponse):  # Gemini uses same response types as OpenAI
     """Gemini-specific response wrapper (reuses OpenAI extraction logic)."""
+
     pass

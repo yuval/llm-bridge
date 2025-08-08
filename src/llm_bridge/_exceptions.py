@@ -18,6 +18,7 @@ class LLMBridgeError(RuntimeError):
     Attributes:
         original_exc: The underlying provider exception.
     """
+
     original_exc: Exception
 
     def __init__(self, message: str, original_exc: Exception) -> None:

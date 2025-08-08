@@ -87,6 +87,10 @@ class OpenAIRequestAdapter:
         base_params.pop("stream", None)
         base_params.pop("extra_params", None)
 
+        # Keep reasoning_effort and verbosity as top-level parameters for chat completions
+        # (They don't need to be nested like in the Responses API)
+        # Note: verbosity may not be supported in all SDK versions yet
+        
         # Fold Responses-style extras into Chat Completions for convenience
         extras = getattr(params, "extra_params", None) or {}
         reasoning = extras.get("reasoning")
@@ -207,6 +211,17 @@ class OpenAILLM(BaseAsyncLLM):
             **self._adapter.build_params(params, self.model),
         }
 
+        # The OpenAI Chat Completions endpoint doesn't accept some emerging fields
+        # as top-level kwargs (e.g., "verbosity"). We tunnel them via extra_body so the
+        # server can consume them without client-side validation errors.
+        passthrough_keys = ("verbosity", "reasoning_effort")
+        extra_body = {}
+        for k in passthrough_keys:
+            if k in args:
+                extra_body[k] = args.pop(k)
+        if extra_body:
+            # merge if caller already provided extra_body via extra_params->adapter
+            args["extra_body"] = {**args.get("extra_body", {}), **extra_body}
         self._log(
             f"Sending request to OpenAI model {self.model} (Stream: {params.stream})"
         )

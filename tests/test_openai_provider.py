@@ -46,7 +46,7 @@ def test_requires_max_completion_tokens():
 
 def test_reasoning_and_verbosity_top_level_and_responses_style():
     adapter = OpenAIRequestAdapter()
-    # Top-level fields win
+    # Top-level fields remain as top-level for chat completions
     params = ChatParams(reasoning_effort="minimal", verbosity="low")
     out = adapter.build_params(params, "gpt-5")
     assert out["reasoning_effort"] == "minimal"

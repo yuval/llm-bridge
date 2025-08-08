@@ -1,4 +1,5 @@
 """Enhanced chat types with utility methods."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -11,7 +12,7 @@ from llm_bridge.types.tool import ToolCallRequest
 @dataclass
 class ChatParams:
     """Parameters for chat completion requests with utility methods."""
-    
+
     # Core parameters
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
@@ -19,28 +20,28 @@ class ChatParams:
     frequency_penalty: Optional[float] = None
     presence_penalty: Optional[float] = None
     stream: bool = False
-    
+
     # Tool parameters
     tools: Optional[list[dict[str, Any]]] = None
     tool_choice: Optional[Union[str, dict[str, Any]]] = None
-    
+
     # Other parameters
     response_format: Optional[dict[str, Any]] = None
     seed: Optional[int] = None
     stop: Optional[Union[str, list[str]]] = None
     user: Optional[str] = None
     parallel_tool_calls: Optional[bool] = None
-    
+
     # Provider-specific parameters
     extra_params: Optional[dict[str, Any]] = None
-    
+
     def as_dict(self, exclude_none: bool = True) -> dict[str, Any]:
         """
         Convert to dictionary, optionally excluding None values.
-        
+
         Args:
             exclude_none: If True, exclude fields with None values
-            
+
         Returns:
             Dictionary representation of the params
         """
@@ -48,14 +49,14 @@ class ChatParams:
         if exclude_none:
             return {k: v for k, v in result.items() if v is not None}
         return result
-    
+
     def copy(self, **kwargs) -> "ChatParams":
         """
         Create a copy of this ChatParams with optional overrides.
-        
+
         Args:
             **kwargs: Field values to override
-            
+
         Returns:
             New ChatParams instance with overrides applied
         """
@@ -67,7 +68,7 @@ class ChatParams:
         return ChatParams(**current)
 
 
-# Type alias for chat messages  
+# Type alias for chat messages
 ChatMessage = dict[str, Any]
 
 
@@ -79,13 +80,11 @@ class BaseChatResponse(ABC):
 
     @property
     @abstractmethod
-    def is_error(self) -> bool:
-        ...
+    def is_error(self) -> bool: ...
 
     @property
     @abstractmethod
-    def error_message(self) -> Optional[str]:
-        ...
+    def error_message(self) -> Optional[str]: ...
 
     @property
     @abstractmethod
@@ -94,23 +93,21 @@ class BaseChatResponse(ABC):
         ...
 
     @abstractmethod
-    def get_response_content(self) -> str:
-        ...
+    def get_response_content(self) -> str: ...
 
-    # @abstractmethod  
+    # @abstractmethod
     # def get_usage(self) -> dict[str, Any] | None:
     #     """Return raw usage information from the provider response, or None if unavailable."""
     #     ...
 
     @abstractmethod
-    def raise_for_error(self) -> None:
-        ...
+    def raise_for_error(self) -> None: ...
 
-    @abstractmethod  
-    def get_tool_calls(self) -> list['ToolCallRequest'] | None:
+    @abstractmethod
+    def get_tool_calls(self) -> list["ToolCallRequest"] | None:
         """
         Extract tool calls from the response.
-        
+
         Returns:
             List of ToolCallRequest objects if tool calls are present, None otherwise.
         """
@@ -119,19 +116,19 @@ class BaseChatResponse(ABC):
     def extract_by_path(self, path: str, default: Any = None) -> Any:
         """
         Extract a value from the response using a dot-notation path.
-        
+
         Args:
             path: Dot-notation path like "choices.0.message.content"
             default: Default value if path doesn't exist
-            
+
         Returns:
             The extracted value or default
         """
         if self.is_error or not self.raw_response:
             return default
-            
+
         current = self.raw_response
-        for part in path.split('.'):
+        for part in path.split("."):
             if part.isdigit():
                 # Handle array indexing
                 try:

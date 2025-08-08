@@ -12,15 +12,14 @@ from .base import BaseAsyncLLM, ChatResult
 from .openai import OpenAIRequestAdapter
 
 
-_DEFAULT_GEMINI_BASE_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/openai/"
-)
+_DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 
 class GeminiLLM(BaseAsyncLLM):
     """
     Gemini LLM implementation via the OpenAI-compatible endpoint.
     """
+
     def __init__(
         self,
         model: str,
@@ -79,15 +78,17 @@ class GeminiLLM(BaseAsyncLLM):
         params: ChatParams,
     ) -> ChatResult:
         """Core implementation for Gemini chat requests via OpenAI-compatible API."""
-        
+
         # Build request arguments using OpenAI adapter
         args = {
             "model": self.model,
             "messages": self._adapter.build_messages(messages),
-            **self._adapter.build_params(params)
+            **self._adapter.build_params(params, self.model),
         }
-        
-        self._log(f"Sending request to Gemini model {self.model} (Stream: {params.stream})")
+
+        self._log(
+            f"Sending request to Gemini model {self.model} (Stream: {params.stream})"
+        )
 
         if params.stream:
             # Handle streaming

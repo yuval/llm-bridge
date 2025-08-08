@@ -12,6 +12,7 @@ Example::
     $ OPENAI_API_KEY=sk‑… ./openai_chat_examples.py
 
 """
+
 from __future__ import annotations
 
 import asyncio

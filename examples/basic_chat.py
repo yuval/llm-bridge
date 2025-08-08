@@ -56,6 +56,10 @@ async def chat_example_pass_client():
     print("Anthropic: ", anthropic_response.get_response_content())
     print("Gemini: ", gemini_response.get_response_content())
 
+    print("OpenAI: ", openai_response.raw_response.usage)
+    print("Anthropic: ", anthropic_response.raw_response.usage)
+    print("Gemini: ", gemini_response.raw_response.usage)
+
 
 if __name__ == "__main__":
     asyncio.run(chat_example_default_client())

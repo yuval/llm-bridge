@@ -29,7 +29,7 @@ def create_large_system_prompt():
     ]
     
     detailed_sections = []
-    for i, topic in enumerate(topics * 1):  # Repeat to ensure length
+    for i, topic in enumerate(topics * 2):  # Repeat to ensure length
         section = f"""
         Section {i+1}: Analysis of {topic}
         
@@ -92,7 +92,8 @@ async def main():
     response2: AnthropicResponse = await llm.chat(messages, params=params)
     logger.info(f"Cache read: {response2.cache_read_input_tokens} tokens")
     
-    print(f"\nResponse: {response2.get_response_content()}")
+    print(response2.raw_response.usage.to_dict())
+    #print(f"\nResponse: {response2.get_response_content()}")
 
 
 if __name__ == "__main__":

@@ -569,23 +569,6 @@ url = "https://pypi.org/simple"
 reference = "pypi-public"
 
 [[package]]
-name = "json-repair"
-version = "0.44.1"
-description = "A package to repair broken json strings"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "json_repair-0.44.1-py3-none-any.whl", hash = "sha256:51d82532c3b8263782a301eb7904c75dce5fee8c0d1aba490287fc0ab779ac50"},
-    {file = "json_repair-0.44.1.tar.gz", hash = "sha256:1130eb9733b868dac1340b43cb2effebb519ae6d52dd2d0728c6cca517f1e0b4"},
-]
-
-[package.source]
-type = "legacy"
-url = "https://pypi.org/simple"
-reference = "pypi-public"
-
-[[package]]
 name = "mypy"
 version = "1.15.0"
 description = "Optional static typing for Python"
@@ -1377,5 +1360,5 @@ reference = "pypi-public"
 
 [metadata]
 lock-version = "2.1"
-python-versions = "3.12"
-content-hash = "f6ce922a6b86064fefab2757f1f65dc886efffe73a4e1ec484040ede76249857"
+python-versions = "^3.12"
+content-hash = "03ac7a1e94cc5b6648e189434a7b473e865dbfcbf24fc8b61499abd1cdae5679"

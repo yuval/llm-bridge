@@ -97,6 +97,11 @@ class BaseChatResponse(ABC):
     def get_response_content(self) -> str:
         ...
 
+    # @abstractmethod  
+    # def get_usage(self) -> dict[str, Any] | None:
+    #     """Return raw usage information from the provider response, or None if unavailable."""
+    #     ...
+
     @abstractmethod
     def raise_for_error(self) -> None:
         ...

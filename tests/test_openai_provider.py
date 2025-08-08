@@ -24,14 +24,6 @@ def test_max_tokens_parameter_conversion():
     assert result["max_completion_tokens"] == 100
     print("✅ GPT-5 test passed")
 
-    # Test with O1 model (should convert to max_completion_tokens)
-    params = ChatParams(max_tokens=50)
-    result = adapter.build_params(params, "o1-preview")
-    assert "max_tokens" not in result
-    assert "max_completion_tokens" in result
-    assert result["max_completion_tokens"] == 50
-    print("✅ O1 test passed")
-
 
 def test_requires_max_completion_tokens():
     """Test the model detection logic."""

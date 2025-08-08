@@ -9,7 +9,7 @@ packages = [{ include = "llm_bridge", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-openai = "^1.78.1"
+openai = "1.99.3"
 google-genai = "^1.15.0"
 httpcore = "^1.0.9"
 anthropic = "^0.52.2"

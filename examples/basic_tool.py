@@ -4,12 +4,7 @@ import argparse
 import asyncio
 import logging
 
-from llm_bridge.factory import create_llm
-from llm_bridge.providers import Provider
-from llm_bridge.providers.anthropic import AnthropicRequestAdapter
-from llm_bridge.providers.openai import OpenAIRequestAdapter, create_openai_message_dict
-from llm_bridge.types.chat import ChatMessage, ChatParams
-from llm_bridge.types.tool import ToolCallRequest, ToolCallResult
+from llm_bridge import create_llm, Provider, ChatMessage, ToolCallRequest, ToolCallResult
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -87,58 +82,34 @@ async def single_tool_roundtrip(provider: Provider, model: str) -> None:
     messages: list[ChatMessage] = [
         {"role": "user", "content": "What's the weather in San Francisco?"}
     ]
-    params = ChatParams(tools=tools)
+    params = {"tools": tools}
 
     # Step 1 → get first response
     rsp1 = await llm.chat(messages, params=params)
 
     # Step 2 → extract tool/function calls using the new wrapper method
-    calls = rsp1.get_tool_calls()
+    calls = rsp1.tool_calls
 
     if not calls:
-        logger.warning(f"Model answered directly: {rsp1.get_response_content()}")
+        logger.warning(f"Model answered directly: {rsp1.content}")
         return
 
-    # Step 3 → for each call, re‐inject the call then the result
+    # Step 3 → use unified adapter methods to inject assistant message and tool results
+    adapter = llm.adapter
+    
+    # Inject the assistant's response (with tool calls)
+    assistant_msg = adapter.assistant_message_from(rsp1.raw)
+    messages.append(assistant_msg)
+    
+    # Inject tool results
     for call in calls:
-        if provider == Provider.ANTHROPIC:
-            adapter = AnthropicRequestAdapter()
-            # re‐inject tool_use
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": [
-                        {
-                            "type": "tool_use",
-                            "id": call.id,
-                            "name": call.name,
-                            "input": call.arguments,
-                        }
-                    ],
-                }
-            )
-            # inject result block
-            messages.append(
-                adapter.build_tool_result_message(
-                    ToolCallResult(call.id, run_local_tool(call))
-                )
-            )
-        else:
-            adapter = OpenAIRequestAdapter()
-            # re‐inject function‐call message
-            call_msg = create_openai_message_dict(rsp1)
-            if call_msg:
-                messages.append(call_msg)
-            # inject function result
-            messages.append(
-                adapter.build_tool_result_message(
-                    ToolCallResult(call.id, run_local_tool(call))
-                )
-            )
+        tool_result = ToolCallResult(call.id, run_local_tool(call))
+        result_msg = adapter.tool_result_message(tool_result)
+        messages.append(result_msg)
 
     # Step 4 → final completion
-    rsp2 = await llm.chat(messages, params=ChatParams(tools=tools))
-    logger.info("%s says: %s", provider.value.capitalize(), rsp2.get_response_content())
+    rsp2 = await llm.chat(messages, params={"tools": tools})
+    logger.info("%s says: %s", provider.value.capitalize(), rsp2.content)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,5 @@
 """
-Translate noisy provider tracebacks into a unified `LLMBridgeError`, while
-preserving the original exception for full tracebacks.
+Error handling and classification for llm-bridge.
 """
 
 from __future__ import annotations
@@ -9,7 +8,7 @@ import importlib
 import logging
 from typing import Final, Type, Optional
 
-__all__: tuple[str, ...] = ("LLMBridgeError", "classify_error")
+__all__ = ("LLMBridgeError", "classify_error")
 
 
 class LLMBridgeError(RuntimeError):

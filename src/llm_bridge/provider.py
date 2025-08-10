@@ -1,3 +1,5 @@
+"""Provider enumeration and utilities."""
+
 from __future__ import annotations
 
 import os
@@ -33,6 +35,3 @@ def get_api_key(provider: Provider) -> str:
         return os.environ[env_var]
     except KeyError as exc:
         raise RuntimeError(f"{env_var} missing") from exc
-
-
-__all__ = ["Provider", "get_api_key"]

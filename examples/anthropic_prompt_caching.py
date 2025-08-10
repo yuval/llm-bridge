@@ -9,9 +9,8 @@ Execute with: ANTHROPIC_API_KEY=sk-... python examples/prompt_caching.py
 import asyncio
 import logging
 
-from llm_bridge import ChatParams, Provider, create_llm
-from llm_bridge.providers.anthropic import ephemeral
-from llm_bridge.responses import AnthropicResponse
+from llm_bridge import Provider, create_llm, ChatResponse
+from llm_bridge.adapters.anthropic import ephemeral
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -69,7 +68,7 @@ def create_large_system_prompt():
 
 async def main():
     llm = create_llm(Provider.ANTHROPIC, "claude-3-haiku-20240307")
-    params = ChatParams(max_tokens=500, temperature=0.7)
+    params = dict(max_tokens=500, temperature=0.7)
 
     # Generate large system prompt to meet caching threshold
     system_prompt = create_large_system_prompt()
@@ -92,17 +91,19 @@ async def main():
         {"role": "user", "content": "Review: def add(a, b): return a + b"},
     ]
 
-    response1: AnthropicResponse = await llm.chat(messages, params=params)
-    logger.info(f"Cache created: {response1.cache_creation_input_tokens} tokens")
+    response1: ChatResponse = await llm.chat(messages, params=params)
+    # Cache stats available in raw response if needed
+    logger.info(f"First response received: {len(response1.content)} chars")
 
     # Second request: uses cache
     messages[1]["content"] = "Review: def divide(a, b): return a / b"
 
-    response2: AnthropicResponse = await llm.chat(messages, params=params)
-    logger.info(f"Cache read: {response2.cache_read_input_tokens} tokens")
+    response2: ChatResponse = await llm.chat(messages, params=params)
+    # Access cache stats from raw response if needed
+    # logger.info(f"Cache read: {response2.raw.usage.cache_read_input_tokens} tokens")
 
-    print(response2.raw_response.usage.to_dict())
-    # print(f"\nResponse: {response2.get_response_content()}")
+    print(response2.raw.usage)
+    # print(f"\nResponse: {response2.content}")
 
 
 if __name__ == "__main__":

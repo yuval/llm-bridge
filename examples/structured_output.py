@@ -12,7 +12,7 @@ from typing import List
 
 from pydantic import BaseModel
 
-from llm_bridge import ChatParams, Provider, create_llm
+from llm_bridge import Provider, create_llm
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ async def solve_math_with_json_output(equation: str):
     ]
 
     # Set up parameters with JSON schema response format
-    params = ChatParams(
+    params = dict(
         response_format={
             "type": "json_schema",
             "json_schema": {
@@ -84,7 +84,7 @@ async def solve_math_with_json_output(equation: str):
         response = await llm.chat(messages, params=params)
 
         # Parse the JSON response
-        content = response.get_response_content()
+        content = response.content
         parsed_response = json.loads(content)
 
         # Create Pydantic model for validation
@@ -102,7 +102,7 @@ async def solve_math_with_json_output(equation: str):
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse JSON response: {e}")
-        logger.error(f"Raw response: {response.get_response_content()}")
+        logger.error(f"Raw response: {response.content}")
         return None
     except Exception as e:
         logger.error(f"Error during solution: {e}")

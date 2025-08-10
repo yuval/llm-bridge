@@ -1,7 +1,5 @@
 """
-Provider‑neutral dataclasses for client‑side tool use.
-
-They are intentionally minimal: everything provider‑specific lives in adapters.
+Core types for llm-bridge.
 """
 
 from __future__ import annotations
@@ -9,7 +7,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-__all__ = ["ToolCallRequest", "ToolCallResult"]
+__all__ = ["ChatMessage", "ToolCallRequest", "ToolCallResult"]
+
+
+# Type alias for chat messages
+ChatMessage = dict[str, Any]
 
 
 @dataclass(slots=True)
